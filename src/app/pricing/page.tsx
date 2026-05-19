@@ -70,6 +70,9 @@ export default function PricingPage() {
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Start free. Upgrade as you grow. No hidden fees, no surprises.
           </p>
+          <p className="text-sm text-slate-500">
+            Pay with card or UPI (India). 7-day free trial on all paid plans.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

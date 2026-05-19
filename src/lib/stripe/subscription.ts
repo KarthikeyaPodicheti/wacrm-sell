@@ -55,6 +55,7 @@ export async function createCheckoutSession(priceId: string) {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
+    payment_method_types: ['card', 'upi'],
     success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?subscription=success`,
     cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
     metadata: { user_id: user.id },
