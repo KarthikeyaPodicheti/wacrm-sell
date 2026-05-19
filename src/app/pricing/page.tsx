@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check } from 'lucide-react'
+import { Check, IndianRupee, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { getPlanFeatures, type PlanSlug } from '@/lib/stripe/plans'
+import { getPlanFeatures, PLAN_PRICING, type PlanSlug } from '@/lib/plans'
+
+type Currency = 'usd' | 'inr'
 
 const PLANS: PlanSlug[] = ['free', 'pro', 'agency']
 
@@ -48,16 +50,35 @@ const PLAN_META: Record<PlanSlug, { desc: string; features: string[]; highlight?
 
 export default function PricingPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState<PlanSlug | null>(null)
+  const [currency, setCurrency] = useState<Currency>('inr')
+  const [loading, setLoading] = useState<{ slug: PlanSlug; provider: 'stripe' | 'razorpay' } | null>(null)
 
-  async function handleUpgrade(slug: PlanSlug) {
+  async function handleSubscribe(slug: PlanSlug) {
     if (slug === 'free') {
       router.push('/signup')
       return
     }
-    setLoading(slug)
-    router.push('/signup')
-    // After signup, redirect to pricing to pick a plan
+
+    if (currency === 'inr') {
+      setLoading({ slug, provider: 'razorpay' })
+      const res = await fetch('/api/razorpay/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planSlug: slug }),
+      })
+      const data = await res.json()
+      if (data.short_url) {
+        window.location.href = data.short_url
+      } else {
+        const err = data.error || 'Something went wrong'
+        if (err !== 'Authentication required') alert(err)
+        else router.push('/signup')
+        setLoading(null)
+      }
+    } else {
+      setLoading({ slug, provider: 'stripe' })
+      router.push('/signup')
+    }
   }
 
   return (
@@ -70,23 +91,53 @@ export default function PricingPage() {
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Start free. Upgrade as you grow. No hidden fees, no surprises.
           </p>
-          <p className="text-sm text-slate-500">
-            Pay with card or UPI (India). 7-day free trial on all paid plans.
-          </p>
+
+          {/* Currency toggle */}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrency('usd')}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                currency === 'usd'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <DollarSign className="size-4" />
+              USD
+            </button>
+            <button
+              onClick={() => setCurrency('inr')}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                currency === 'inr'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <IndianRupee className="size-4" />
+              INR
+            </button>
+          </div>
+
+          {currency === 'inr' && (
+            <p className="text-xs text-slate-500">
+              Pay via UPI, Credit/Debit Card, Net Banking, or Wallet. No international fees.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((slug) => {
             const plan = getPlanFeatures(slug)
+            const pricing = PLAN_PRICING[slug][currency]
             const meta = PLAN_META[slug]
+            const isUsd = currency === 'usd'
+            const isLoading = loading?.slug === slug
 
             return (
               <Card
                 key={slug}
                 className={`relative flex flex-col bg-slate-900 border-slate-700 ${
-                  meta.highlight
-                    ? 'ring-2 ring-violet-500 scale-105'
-                    : ''
+                  meta.highlight ? 'ring-2 ring-violet-500 scale-105' : ''
                 }`}
               >
                 {meta.highlight && (
@@ -107,14 +158,20 @@ export default function PricingPage() {
                 <CardContent className="flex-1 flex flex-col gap-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-white">
-                      {plan.price_monthly_cents === 0
-                        ? 'Free'
-                        : `$${plan.price_monthly_cents / 100}`}
+                      {pricing.price_display}
                     </span>
-                    {plan.price_monthly_cents > 0 && (
-                      <span className="text-slate-400 text-sm">/month</span>
+                    {pricing.price_cents > 0 && (
+                      <span className="text-slate-400 text-sm">/{isUsd ? 'month' : 'mo'}</span>
                     )}
                   </div>
+
+                  {currency === 'inr' && pricing.price_cents > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span className="rounded bg-slate-800 px-2 py-0.5">UPI</span>
+                      <span className="rounded bg-slate-800 px-2 py-0.5">Card</span>
+                      <span className="rounded bg-slate-800 px-2 py-0.5">Net Banking</span>
+                    </div>
+                  )}
 
                   <ul className="space-y-3 flex-1">
                     {meta.features.map((f) => (
@@ -129,10 +186,16 @@ export default function PricingPage() {
                     variant={slug === 'free' ? 'outline' : 'default'}
                     size="lg"
                     className="w-full"
-                    disabled={loading === slug}
-                    onClick={() => handleUpgrade(slug)}
+                    disabled={isLoading}
+                    onClick={() => handleSubscribe(slug)}
                   >
-                    {slug === 'free' ? 'Get started free' : 'Upgrade to ' + plan.name}
+                    {slug === 'free'
+                      ? 'Get started free'
+                      : isLoading
+                        ? 'Processing...'
+                        : isUsd
+                          ? `Subscribe $${pricing.price_cents / 100}/mo`
+                          : `Subscribe ₹${(pricing.price_cents / 100).toLocaleString('en-IN')}/mo`}
                   </Button>
                 </CardContent>
               </Card>

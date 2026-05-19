@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CreditCard, ArrowUpRight } from 'lucide-react'
+import { CreditCard, ArrowUpRight, IndianRupee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
 import { getPlanFeatures, type PlanSlug } from '@/lib/stripe/plans'
 
@@ -66,13 +67,15 @@ export default function BillingPage() {
   const slug = plan?.slug as PlanSlug | undefined
   const features = slug ? getPlanFeatures(slug) : null
   const badge = STATUS_BADGE[subscription?.status] ?? { label: subscription?.status, variant: 'outline' as const }
+  const hasRazorpay = !!subscription?.razorpay_subscription_id
+  const hasStripe = !!subscription?.stripe_subscription_id
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Billing</h1>
         <p className="text-sm text-slate-400 mt-1">
-          Manage your subscription and payment methods.
+          Manage your subscription and payment method.
         </p>
       </div>
 
@@ -84,7 +87,7 @@ export default function BillingPage() {
               <div>
                 <CardTitle className="text-white">Current Plan</CardTitle>
                 <CardDescription>
-                  Your subscription details and usage
+                  {hasRazorpay ? 'Paid via Razorpay (INR)' : hasStripe ? 'Paid via Stripe (USD)' : 'Free plan'}
                 </CardDescription>
               </div>
             </div>
@@ -93,13 +96,9 @@ export default function BillingPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-baseline justify-between">
-            <div>
+            <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-white">{plan?.name ?? 'Free'}</span>
-              {features && features.price_monthly_cents > 0 && (
-                <span className="text-sm text-slate-400 ml-2">
-                  ${features.price_monthly_cents / 100}/month
-                </span>
-              )}
+              {hasRazorpay && <IndianRupee className="size-4 text-slate-400" />}
             </div>
           </div>
 
@@ -141,18 +140,34 @@ export default function BillingPage() {
             </div>
           )}
 
-          {subscription?.stripe_customer_id && (
-            <div className="pt-4 border-t border-slate-700">
+          <Separator className="bg-slate-700" />
+
+          <div className="space-y-3">
+            {hasStripe && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-400">Stripe (USD)</p>
+                <Button variant="outline" size="sm" onClick={openPortal} disabled={portalLoading}>
+                  <ArrowUpRight className="size-3" />
+                  Manage
+                </Button>
+              </div>
+            )}
+            {hasRazorpay && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-400">Razorpay (INR)</p>
+                <p className="text-xs text-slate-500">Manage in Razorpay dashboard</p>
+              </div>
+            )}
+            {!hasStripe && !hasRazorpay && subscription?.status !== 'active' && (
               <Button
-                variant="outline"
-                onClick={openPortal}
-                disabled={portalLoading}
+                variant="default"
+                size="sm"
+                onClick={() => router.push('/pricing')}
               >
-                <ArrowUpRight className="size-4" />
-                Manage billing
+                Upgrade plan
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
