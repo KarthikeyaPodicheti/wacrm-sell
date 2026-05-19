@@ -1,0 +1,33 @@
+name: wacrm
+region: blr
+services:
+  - name: web
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    source_dir: /
+    build_command: npm run build
+    run_command: npm start
+    http_port: 3000
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://your-project.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: your-anon-key
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: your-service-role-key
+      - key: ENCRYPTION_KEY
+        value: your-64-char-hex
+      - key: META_APP_SECRET
+        value: your-meta-app-secret
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://your-domain.com
+      - key: NEXT_PUBLIC_BASE_URL
+        value: https://your-domain.com
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        value: pk_live_xxxxxxxxxxxxx
+      - key: STRIPE_SECRET_KEY
+        value: sk_live_xxxxxxxxxxxxx
+      - key: STRIPE_WEBHOOK_SECRET
+        value: whsec_xxxxxxxxxxxxx

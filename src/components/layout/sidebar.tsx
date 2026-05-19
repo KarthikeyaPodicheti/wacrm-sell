@@ -6,6 +6,8 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   MessageSquare,
